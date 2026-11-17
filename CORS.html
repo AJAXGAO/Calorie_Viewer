@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UGS 連線測試</title>
+<title>UGStest</title>
 <style>
   /* 版面 */
   body { font-family: system-ui, "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
@@ -22,7 +22,7 @@
 <h1>UGS 連線測試（CORS）</h1>
 <p><small>確認瀏覽器能否直接呼叫 UGS 的帳號與 Cloud Save API。密碼只用於這次請求，不會儲存。</small></p>
 
-<label>Project ID（Unity Dashboard → 專案設定）
+<label>Project ID（https://cloud.unity.com/organizations/........../projects/----/settings）
   <input id="project_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
 </label>
 <label>Environment 名稱（留空 = production）
@@ -90,8 +90,8 @@ async function send_request(url, options) {
 // 格式檢查：與 UGS 規則相同，回傳錯誤訊息 (沒有錯誤時回傳 null)
 const USERNAME_PATTERN = /^[a-z0-9.\-@_]{3,20}$/i;
 function check_format(username, password) {
-  if (!USERNAME_PATTERN.test(username)) return "帳號名稱需為 3~20 字元，只能使用 a-z、0-9、. - @ _";
-  if (password.length < 8 || password.length > 30) return "密碼需為 8~30 字元";
+  if (!USERNAME_PATTERN.test(username)) return "用户名不区分大小写；最少需要包含 3 个字符，最多可以包含 20 个字符，并且仅字母、数字，以及“.”、“-”、“@”或“_”等符号";
+  if (password.length < 8 || password.length > 30) return "密码区分大小写；最少需要包含 8 个字符，最多可以包含 30 个字符，并且至少需要包含 1 个小写字母、1 个大写字母、1 个数字和 1 个符号";
   if (!/[A-Z]/.test(password)) return "密碼需包含至少一個大寫字母";
   if (!/[a-z]/.test(password)) return "密碼需包含至少一個小寫字母";
   if (!/[0-9]/.test(password)) return "密碼需包含至少一個數字";

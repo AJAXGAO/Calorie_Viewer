@@ -19,8 +19,8 @@
 </style>
 </head>
 <body>
-<h1>UGS 連線測試（CORS）</h1>
-<p><small>確認瀏覽器能否直接呼叫 UGS 的帳號與 Cloud Save API。密碼只用於這次請求，不會儲存。</small></p>
+<h1>UGS test</h1>
+<p><small></small></p>
 
 <label>Project ID（https://cloud.unity.com/organizations/........../projects/----/settings）
   <input id="project_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
@@ -42,7 +42,7 @@
   <button id="btn_load">3. 讀取 Cloud Save</button>
 </div>
 
-<pre id="log">尚未執行</pre>
+<pre id="log">...</pre>
 
 <script>
 // 常數：UGS API 位址
@@ -95,13 +95,13 @@ function check_format(username, password) {
   if (!/[A-Z]/.test(password)) return "密碼需包含至少一個大寫字母";
   if (!/[a-z]/.test(password)) return "密碼需包含至少一個小寫字母";
   if (!/[0-9]/.test(password)) return "密碼需包含至少一個數字";
-  if (!/[^A-Za-z0-9]/.test(password)) return "密碼需包含至少一個符號";
+  if (!/[^A-Za-z0-9]/.test(password)) return "密碼需包含至少一個符號.-@_";
   return null;
 }
 
 // 帳號：註冊或登入 (兩者回應格式相同)
 async function authenticate(action) {
-  if (!value_of("project_id")) return write_log("請先填 Project ID", false);
+  if (!value_of("project_id")) return write_log("Project ID Not found", false);
   const format_error = check_format(value_of("username"), value_of("password"));
   if (format_error) return write_log(format_error, false);
   try {

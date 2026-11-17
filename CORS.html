@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UGS 連線測試</title>
+<style>
+  /* 版面 */
+  body { font-family: system-ui, "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  label { display: block; margin-top: .8rem; font-size: .9rem; color: #555; }
+  input { width: 100%; padding: .5rem; font-size: 1rem; box-sizing: border-box; }
+  .buttons { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+  button { padding: .5rem 1rem; font-size: 1rem; cursor: pointer; }
+  pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; min-height: 6rem; font-size: .85rem; }
+  .ok { color: #1a7f37; }
+  .err { color: #c62828; }
+  small { color: #777; }
+</style>
+</head>
+<body>
+<h1>UGS 連線測試（CORS）</h1>
+<p><small>確認瀏覽器能否直接呼叫 UGS 的帳號與 Cloud Save API。密碼只用於這次請求，不會儲存。</small></p>
+
+<label>Project ID（Unity Dashboard → 專案設定）
+  <input id="project_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+</label>
+<label>Environment 名稱（留空 = production）
+  <input id="environment" placeholder="production">
+</label>
+<label>帳號名稱（3~20 字元：a-z 0-9 . - @ _）
+  <input id="username" autocomplete="username">
+</label>
+<label>密碼（8~30 字元，含大寫、小寫、數字、符號）
+  <input id="password" type="password" autocomplete="current-password">
+</label>
+
+<div class="buttons">
+  <button id="btn_sign_up">1. 註冊</button>
+  <button id="btn_sign_in">1. 登入</button>
+  <button id="btn_save">2. 寫入 Cloud Save</button>
+  <button id="btn_load">3. 讀取 Cloud Save</button>
+</div>
+
+<pre id="log">尚未執行</pre>
+
+<script>
+// 常數：UGS API 位址
+const AUTH_BASE = "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword";
+const SAVE_BASE = "https://cloud-save.services.api.unity.com/v1/data/projects";
+
+// 狀態：登入後取得的 token 與玩家 ID
+let id_token = null;
+let player_id = null;
+
+// 工具：讀取欄位
+const value_of = (id) => document.getElementById(id).value.trim();
+
+// 工具：輸出結果
+function write_log(text, is_ok) {
+  const log = document.getElementById("log");
+  log.className = is_ok ? "ok" : "err";
+  log.textContent = text;
+}
+
+// 工具：共用標頭
+function make_headers(with_token) {
+  const headers = { "Content-Type": "application/json", "ProjectId": value_of("project_id") };
+  const environment = value_of("environment");
+  if (environment) headers["UnityEnvironment"] = environment;
+  if (with_token && id_token) headers["Authorization"] = "Bearer " + id_token;
+  return headers;
+}
+
+// 工具：送出請求並區分 CORS / 網路錯誤與伺服器錯誤
+async function send_request(url, options) {
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (e) {
+    // fetch 直接丟出 TypeError：多半是被 CORS 擋下或無法連線
+    throw new Error("請求被瀏覽器擋下或無法連線（很可能是 CORS）\n" + e.message +
+                    "\n請按 F12 查看 Console 是否出現 CORS 錯誤");
+  }
+  const text = await response.text();
+  if (!response.ok) throw new Error("伺服器回應 " + response.status + "\n" + text);
+  return text ? JSON.parse(text) : {};
+}
+
+// 帳號：註冊或登入 (兩者回應格式相同)
+async function authenticate(action) {
+  if (!value_of("project_id")) return write_log("請先填 Project ID", false);
+  try {
+    const data = await send_request(AUTH_BASE + "/" + action, {
+      method: "POST",
+      headers: make_headers(false),
+      body: JSON.stringify({ username: value_of("username"), password: value_of("password") })
+    });
+    id_token = data.idToken;
+    player_id = data.userId || (data.user && data.user.id);
+    write_log((action === "sign-up" ? "註冊" : "登入") + "成功，CORS 沒有問題\nplayer_id: " + player_id, true);
+  } catch (e) {
+    write_log(e.message, false);
+  }
+}
+
+// Cloud Save：寫入一筆測試資料
+async function save_test_item() {
+  if (!id_token) return write_log("請先註冊或登入", false);
+  try {
+    await send_request(`${SAVE_BASE}/${value_of("project_id")}/players/${player_id}/items`, {
+      method: "POST",
+      headers: make_headers(true),
+      body: JSON.stringify({ key: "cors_test", value: { saved_at: new Date().toISOString() } })
+    });
+    write_log("寫入成功（key: cors_test）", true);
+  } catch (e) {
+    write_log(e.message, false);
+  }
+}
+
+// Cloud Save：讀取自己的資料
+async function load_items() {
+  if (!id_token) return write_log("請先註冊或登入", false);
+  try {
+    const data = await send_request(`${SAVE_BASE}/${value_of("project_id")}/players/${player_id}/items`, {
+      method: "GET",
+      headers: make_headers(true)
+    });
+    write_log("讀取成功\n" + JSON.stringify(data, null, 2), true);
+  } catch (e) {
+    write_log(e.message, false);
+  }
+}
+
+// 綁定按鈕
+document.getElementById("btn_sign_up").onclick = () => authenticate("sign-up");
+document.getElementById("btn_sign_in").onclick = () => authenticate("sign-in");
+document.getElementById("btn_save").onclick = save_test_item;
+document.getElementById("btn_load").onclick = load_items;
+</script>
+</body>
+</html>

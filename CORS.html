@@ -87,9 +87,23 @@ async function send_request(url, options) {
   return text ? JSON.parse(text) : {};
 }
 
+// 格式檢查：與 UGS 規則相同，回傳錯誤訊息 (沒有錯誤時回傳 null)
+const USERNAME_PATTERN = /^[a-z0-9.\-@_]{3,20}$/i;
+function check_format(username, password) {
+  if (!USERNAME_PATTERN.test(username)) return "帳號名稱需為 3~20 字元，只能使用 a-z、0-9、. - @ _";
+  if (password.length < 8 || password.length > 30) return "密碼需為 8~30 字元";
+  if (!/[A-Z]/.test(password)) return "密碼需包含至少一個大寫字母";
+  if (!/[a-z]/.test(password)) return "密碼需包含至少一個小寫字母";
+  if (!/[0-9]/.test(password)) return "密碼需包含至少一個數字";
+  if (!/[^A-Za-z0-9]/.test(password)) return "密碼需包含至少一個符號";
+  return null;
+}
+
 // 帳號：註冊或登入 (兩者回應格式相同)
 async function authenticate(action) {
   if (!value_of("project_id")) return write_log("請先填 Project ID", false);
+  const format_error = check_format(value_of("username"), value_of("password"));
+  if (format_error) return write_log(format_error, false);
   try {
     const data = await send_request(AUTH_BASE + "/" + action, {
       method: "POST",

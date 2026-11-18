@@ -3,118 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- 內容安全政策：只執行同網站的 JS / CSS，只允許連線到 UGS 與自己的 Azure Function -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://player-auth.services.api.unity.com https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net; base-uri 'none'; form-action 'none'">
+
+<!-- 連到其他網站時不帶出本頁網址 -->
+<meta name="referrer" content="no-referrer">
+
 <title>Azure 連線測試</title>
-<style>
-  /* 版面 */
-  body { font-family: system-ui, "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-  h1 { font-size: 1.4rem; }
-  label { display: block; margin-top: .8rem; font-size: .9rem; color: #555; }
-  input { width: 100%; padding: .5rem; font-size: 1rem; box-sizing: border-box; }
-  .buttons { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
-  button { padding: .5rem 1rem; font-size: 1rem; cursor: pointer; }
-  pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; min-height: 6rem; font-size: .85rem; }
-  .ok { color: #1a7f37; }
-  .err { color: #c62828; }
-  small { color: #777; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>Azure 連線測試（/api/whoami）</h1>
-<p><small>步驟：登入 UGS 取得 token → 呼叫 Azure Function，由 Azure 驗證 token 並回傳 player_id。密碼不會儲存。</small></p>
+<div id="page">
+  <h1>Azure 連線測試（/api/whoami）</h1>
+  <p><small>登入 UGS 取得 token → 由 Azure 驗證並回傳 player_id。密碼只用於這次登入，不會儲存；token 只保留在這個分頁的記憶體中。</small></p>
 
-<label>UGS Project ID
-  <input id="project_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-</label>
-<label>Azure Function 網址（例如 https://xxx.azurewebsites.net）
-  <input id="api_base" placeholder="https://<Function App 名稱>.azurewebsites.net">
-</label>
-<label>帳號名稱
-  <input id="username" autocomplete="username">
-</label>
-<label>密碼
-  <input id="password" type="password" autocomplete="current-password">
-</label>
+  <div id="sign_in_area">
+    <label>帳號名稱
+      <input id="username" autocomplete="username" maxlength="20">
+    </label>
+    <label>密碼
+      <input id="password" type="password" autocomplete="current-password" maxlength="30">
+    </label>
+  </div>
 
-<div class="buttons">
-  <button id="btn_sign_in">1. 登入 UGS</button>
-  <button id="btn_whoami">2. 呼叫 /api/whoami</button>
-  <button id="btn_bad_token">3. 用錯誤 token 測試（應被拒絕）</button>
+  <div class="buttons">
+    <button id="btn_sign_in">1. 登入 UGS</button>
+    <button id="btn_whoami" disabled>2. 呼叫 /api/whoami</button>
+    <button id="btn_bad_token" disabled>3. 用錯誤 token 測試（應被拒絕）</button>
+    <button id="btn_sign_out" disabled>登出</button>
+  </div>
+
+  <pre id="log">尚未登入</pre>
 </div>
 
-<pre id="log">尚未執行</pre>
-
-<script>
-// 常數：UGS 登入 API
-const AUTH_URL = "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword/sign-in";
-
-// 狀態：登入後取得的 token
-let id_token = null;
-
-// 工具：讀取欄位
-const value_of = (id) => document.getElementById(id).value.trim();
-
-// 工具：Function 網址 (去掉結尾斜線)
-const api_base = () => value_of("api_base").replace(/\/+$/, "");
-
-// 工具：輸出結果
-function write_log(text, is_ok) {
-  const log = document.getElementById("log");
-  log.className = is_ok ? "ok" : "err";
-  log.textContent = text;
-}
-
-// 工具：送出請求並區分 CORS / 網路錯誤與伺服器回應
-async function send_request(url, options) {
-  let response;
-  try {
-    response = await fetch(url, options);
-  } catch (e) {
-    throw new Error("請求被瀏覽器擋下或無法連線（很可能是 Azure 的 CORS 尚未加入 https://ajaxgao.github.io）\n" + e.message);
-  }
-  const text = await response.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-  return { status: response.status, ok: response.ok, data };
-}
-
-// 1. 登入 UGS
-async function sign_in() {
-  if (!value_of("project_id")) return write_log("請先填 UGS Project ID", false);
-  try {
-    const result = await send_request(AUTH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "ProjectId": value_of("project_id") },
-      body: JSON.stringify({ username: value_of("username"), password: value_of("password") })
-    });
-    if (!result.ok) return write_log("UGS 登入失敗 (" + result.status + ")\n" + JSON.stringify(result.data, null, 2), false);
-    id_token = result.data.idToken;
-    write_log("UGS 登入成功\nplayer_id (UGS 回傳): " + result.data.userId + "\n接著按「2. 呼叫 /api/whoami」", true);
-  } catch (e) {
-    write_log(e.message, false);
-  }
-}
-
-// 2 / 3. 呼叫 Azure /api/whoami
-async function call_whoami(token) {
-  if (!api_base()) return write_log("請先填 Azure Function 網址", false);
-  if (!token) return write_log("請先登入 UGS", false);
-  try {
-    const result = await send_request(api_base() + "/api/whoami", {
-      method: "GET",
-      headers: { "Authorization": "Bearer " + token }
-    });
-    const body = JSON.stringify(result.data, null, 2);
-    if (result.ok) write_log("Azure 驗證成功 (200)\n" + body, true);
-    else write_log("Azure 回應 " + result.status + "\n" + body, result.status === 401 && token !== id_token);
-  } catch (e) {
-    write_log(e.message, false);
-  }
-}
-
-// 綁定按鈕
-document.getElementById("btn_sign_in").onclick = sign_in;
-document.getElementById("btn_whoami").onclick = () => call_whoami(id_token);
-document.getElementById("btn_bad_token").onclick = () => call_whoami(id_token ? id_token.slice(0, -4) + "AAAA" : null);
-</script>
+<script src="config.js"></script>
+<script src="whoami_test.js"></script>
 </body>
 </html>

@@ -3,155 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UGStest</title>
-<style>
-  /* 版面 */
-  body { font-family: system-ui, "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-  h1 { font-size: 1.4rem; }
-  label { display: block; margin-top: .8rem; font-size: .9rem; color: #555; }
-  input { width: 100%; padding: .5rem; font-size: 1rem; box-sizing: border-box; }
-  .buttons { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
-  button { padding: .5rem 1rem; font-size: 1rem; cursor: pointer; }
-  pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; min-height: 6rem; font-size: .85rem; }
-  .ok { color: #1a7f37; }
-  .err { color: #c62828; }
-  small { color: #777; }
-</style>
+
+<!-- 內容安全政策：只執行同網站的 JS / CSS，只允許連線到 UGS 與自己的 Azure Function -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://player-auth.services.api.unity.com https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net; base-uri 'none'; form-action 'none'">
+
+<!-- 連到其他網站時不帶出本頁網址 -->
+<meta name="referrer" content="no-referrer">
+
+<title>Azure 連線測試</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>UGS test</h1>
-<p><small></small></p>
+<div id="page">
+  <h1>Azure 連線測試（/api/whoami）</h1>
+  <p><small>登入 UGS 取得 token → 由 Azure 驗證並回傳 player_id。密碼只用於這次登入，不會儲存；token 只保留在這個分頁的記憶體中。</small></p>
 
-<label>Project ID（https://cloud.unity.com/organizations/........../projects/----/settings）
-  <input id="project_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-</label>
-<label>Environment 名稱（留空 = production）
-  <input id="environment" placeholder="production">
-</label>
-<label>帳號名稱（用户名不区分大小写；最少需要包含 3 个字符，最多可以包含 20 个字符，并且仅字母、数字，以及“.”、“-”、“@”或“_”等符号）
-  <input id="username" autocomplete="username">
-</label>
-<label>密碼（密码区分大小写；最少需要包含 8 个字符，最多可以包含 30 个字符，并且至少需要包含 1 个小写字母、1 个大写字母、1 个数字和 1 个符号）
-  <input id="password" type="password" autocomplete="current-password">
-</label>
+  <div id="sign_in_area">
+    <label>帳號名稱
+      <input id="username" autocomplete="username" maxlength="20">
+    </label>
+    <label>密碼
+      <input id="password" type="password" autocomplete="current-password" maxlength="30">
+    </label>
+  </div>
 
-<div class="buttons">
-  <button id="btn_sign_up">1. 註冊</button>
-  <button id="btn_sign_in">1. 登入</button>
-  <button id="btn_save">2. 寫入 Cloud Save</button>
-  <button id="btn_load">3. 讀取 Cloud Save</button>
+  <div class="buttons">
+    <button id="btn_sign_in">1. 登入 UGS</button>
+    <button id="btn_whoami" disabled>2. 呼叫 /api/whoami</button>
+    <button id="btn_bad_token" disabled>3. 用錯誤 token 測試（應被拒絕）</button>
+    <button id="btn_sign_out" disabled>登出</button>
+  </div>
+
+  <pre id="log">尚未登入</pre>
 </div>
 
-<pre id="log">...</pre>
-
-<script>
-// 常數：UGS API 位址
-const AUTH_BASE = "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword";
-const SAVE_BASE = "https://cloud-save.services.api.unity.com/v1/data/projects";
-
-// 狀態：登入後取得的 token 與玩家 ID
-let id_token = null;
-let player_id = null;
-
-// 工具：讀取欄位
-const value_of = (id) => document.getElementById(id).value.trim();
-
-// 工具：輸出結果
-function write_log(text, is_ok) {
-  const log = document.getElementById("log");
-  log.className = is_ok ? "ok" : "err";
-  log.textContent = text;
-}
-
-// 工具：共用標頭
-function make_headers(with_token) {
-  const headers = { "Content-Type": "application/json", "ProjectId": value_of("project_id") };
-  const environment = value_of("environment");
-  if (environment) headers["UnityEnvironment"] = environment;
-  if (with_token && id_token) headers["Authorization"] = "Bearer " + id_token;
-  return headers;
-}
-
-// 工具：送出請求並區分 CORS / 網路錯誤與伺服器錯誤
-async function send_request(url, options) {
-  let response;
-  try {
-    response = await fetch(url, options);
-  } catch (e) {
-    // fetch 直接丟出 TypeError：多半是被 CORS 擋下或無法連線
-    throw new Error("請求被瀏覽器擋下或無法連線（很可能是 CORS）\n" + e.message +
-                    "\n請按 F12 查看 Console 是否出現 CORS 錯誤");
-  }
-  const text = await response.text();
-  if (!response.ok) throw new Error("伺服器回應 " + response.status + "\n" + text);
-  return text ? JSON.parse(text) : {};
-}
-
-// 格式檢查：與 UGS 規則相同，回傳錯誤訊息 (沒有錯誤時回傳 null)
-const USERNAME_PATTERN = /^[a-z0-9.\-@_]{3,20}$/i;
-function check_format(username, password) {
-  if (!USERNAME_PATTERN.test(username)) return "用户名不区分大小写；最少需要包含 3 个字符，最多可以包含 20 个字符，并且仅字母、数字，以及“.”、“-”、“@”或“_”等符号";
-  if (password.length < 8 || password.length > 30) return "密码区分大小写；最少需要包含 8 个字符，最多可以包含 30 个字符，并且至少需要包含 1 个小写字母、1 个大写字母、1 个数字和 1 个符号";
-  if (!/[A-Z]/.test(password)) return "密碼需包含至少一個大寫字母";
-  if (!/[a-z]/.test(password)) return "密碼需包含至少一個小寫字母";
-  if (!/[0-9]/.test(password)) return "密碼需包含至少一個數字";
-  if (!/[^A-Za-z0-9]/.test(password)) return "密碼需包含至少一個符號.-@_";
-  return null;
-}
-
-// 帳號：註冊或登入 (兩者回應格式相同)
-async function authenticate(action) {
-  if (!value_of("project_id")) return write_log("Project ID Not found", false);
-  const format_error = check_format(value_of("username"), value_of("password"));
-  if (format_error) return write_log(format_error, false);
-  try {
-    const data = await send_request(AUTH_BASE + "/" + action, {
-      method: "POST",
-      headers: make_headers(false),
-      body: JSON.stringify({ username: value_of("username"), password: value_of("password") })
-    });
-    id_token = data.idToken;
-    player_id = data.userId || (data.user && data.user.id);
-    write_log((action === "sign-up" ? "註冊" : "登入") + "成功，CORS 沒有問題\nplayer_id: " + player_id, true);
-  } catch (e) {
-    write_log(e.message, false);
-  }
-}
-
-// Cloud Save：寫入一筆測試資料
-async function save_test_item() {
-  if (!id_token) return write_log("請先註冊或登入", false);
-  try {
-    await send_request(`${SAVE_BASE}/${value_of("project_id")}/players/${player_id}/items`, {
-      method: "POST",
-      headers: make_headers(true),
-      body: JSON.stringify({ key: "cors_test", value: { saved_at: new Date().toISOString() } })
-    });
-    write_log("寫入成功（key: cors_test）", true);
-  } catch (e) {
-    write_log(e.message, false);
-  }
-}
-
-// Cloud Save：讀取自己的資料
-async function load_items() {
-  if (!id_token) return write_log("請先註冊或登入", false);
-  try {
-    const data = await send_request(`${SAVE_BASE}/${value_of("project_id")}/players/${player_id}/items`, {
-      method: "GET",
-      headers: make_headers(true)
-    });
-    write_log("讀取成功\n" + JSON.stringify(data, null, 2), true);
-  } catch (e) {
-    write_log(e.message, false);
-  }
-}
-
-// 綁定按鈕
-document.getElementById("btn_sign_up").onclick = () => authenticate("sign-up");
-document.getElementById("btn_sign_in").onclick = () => authenticate("sign-in");
-document.getElementById("btn_save").onclick = save_test_item;
-document.getElementById("btn_load").onclick = load_items;
-</script>
+<script src="config.js"></script>
+<script src="whoami_test.js"></script>
 </body>
 </html>

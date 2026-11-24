@@ -13,3 +13,5 @@ small { color: #777; }
 .hidden { display: none; }
 .header { display: flex; justify-content: space-between; align-items: center; }
 h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+.rule { margin: .2rem 0 0; }
+button.link { background: none; border: none; color: #0b62c4; text-decoration: underline; padding: .5rem 0; }

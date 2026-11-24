@@ -4,8 +4,9 @@ const CALORIE_CONFIG = Object.freeze({
   // UGS 專案 ID (公開)
   UGS_PROJECT_ID: "90b36bc5-b309-496a-a024-a1c6d99f3fbc",
 
-  // UGS 帳號密碼登入 API
+  // UGS 帳號密碼登入 / 註冊 API
   UGS_SIGN_IN_URL: "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword/sign-in",
+  UGS_SIGN_UP_URL: "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword/sign-up",
 
   // Azure Function 網址 (token 只會送到這裡)
   API_BASE: "https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net/api",

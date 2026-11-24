@@ -12,18 +12,26 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>熱量紀錄</h1>
-  <p><small>使用遊戲內建立的帳號登入。密碼只用於這次登入，不會儲存。</small></p>
+  <h1 id="title">熱量紀錄 - 登入</h1>
+  <p><small id="subtitle">使用遊戲或本網站建立的帳號登入。密碼只用於這次登入，不會儲存。</small></p>
 
   <label>帳號名稱
     <input id="username" autocomplete="username" maxlength="20">
   </label>
+  <p id="username_rule" class="rule hidden"><small>3~20 字元，只能使用英文字母、數字及 . - @ _（不分大小寫）</small></p>
+
   <label>密碼
     <input id="password" type="password" autocomplete="current-password" maxlength="30">
   </label>
+  <p id="password_rule" class="rule hidden"><small>8~30 字元，需包含大寫字母、小寫字母、數字、符號各至少一個</small></p>
+
+  <label id="confirm_area" class="hidden">確認密碼
+    <input id="password_confirm" type="password" autocomplete="new-password" maxlength="30">
+  </label>
 
   <div class="buttons">
-    <button id="btn_sign_in">登入</button>
+    <button id="btn_submit">登入</button>
+    <button id="btn_switch" class="link">還沒有帳號？註冊</button>
   </div>
 
   <pre id="log"></pre>

@@ -8,5 +8,12 @@ const CALORIE_CONFIG = Object.freeze({
   UGS_SIGN_IN_URL: "https://player-auth.services.api.unity.com/v1/authentication/usernamepassword/sign-in",
 
   // Azure Function 網址 (token 只會送到這裡)
-  API_BASE: "https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net/api"
+  API_BASE: "https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net/api",
+
+  // 頁面 (改檔名時只需改這裡)
+  LOGIN_PAGE: "index.html",
+  VIEWER_PAGE: "viewer.html",
+
+  // token 到期前多久視為過期 (秒)，避免剛好在呼叫途中失效
+  TOKEN_EXPIRY_MARGIN: 60
 });

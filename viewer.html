@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- 內容安全政策：只執行同網站的 JS / CSS，只允許連線到自己的 Azure Function -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+
+<title>熱量紀錄</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="hidden">
+  <div class="header">
+    <h1>熱量紀錄</h1>
+    <button id="btn_sign_out">登出</button>
+  </div>
+
+  <p>帳號：<span id="account_name"></span></p>
+  <p><small>登入有效至 <span id="expires_at"></span>，過期後需重新登入。</small></p>
+
+  <h2>遊玩紀錄</h2>
+  <pre id="records">成績與熱量紀錄功能建置中</pre>
+
+  <pre id="log"></pre>
+
+<script src="config.js"></script>
+<script src="session.js"></script>
+<script src="viewer.js"></script>
+</body>
+</html>

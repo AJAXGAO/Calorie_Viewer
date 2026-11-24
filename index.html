@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- 內容安全政策：只執行同網站的 JS / CSS，只允許連線到 UGS 與自己的 Azure Function -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://player-auth.services.api.unity.com https://calorieapi-gkg4f9fph4fddpcc.westus3-01.azurewebsites.net; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+
+<title>熱量紀錄 - 登入</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>熱量紀錄</h1>
+  <p><small>使用遊戲內建立的帳號登入。密碼只用於這次登入，不會儲存。</small></p>
+
+  <label>帳號名稱
+    <input id="username" autocomplete="username" maxlength="20">
+  </label>
+  <label>密碼
+    <input id="password" type="password" autocomplete="current-password" maxlength="30">
+  </label>
+
+  <div class="buttons">
+    <button id="btn_sign_in">登入</button>
+  </div>
+
+  <pre id="log"></pre>
+
+<script src="config.js"></script>
+<script src="session.js"></script>
+<script src="login.js"></script>
+</body>
+</html>

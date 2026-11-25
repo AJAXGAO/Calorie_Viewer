@@ -1,3 +1,3 @@
 # Calorie_Viewer
 
-https://ajaxgao.github.io//Calorie_Viewer/CORS.html
+https://ajaxgao.github.io//Calorie_Viewer/

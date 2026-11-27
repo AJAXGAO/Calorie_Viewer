@@ -14,10 +14,44 @@ function write_log(text, is_ok) {
 }
 
 // ==========================================
-// 已登入就直接到查看頁
+// 遊戲配對參數 (?link=SHA256 雜湊，base64url 43 字元)；格式不符一律忽略
 // ==========================================
-if (Calorie_Session.load()) {
+const LINK_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const link_param = new URLSearchParams(location.search).get("link");
+const link_challenge = link_param && LINK_PATTERN.test(link_param) ? link_param : null;
+
+// 從網址移除 link，避免重新整理或分享時重複出現
+function clear_link_from_url() {
+  history.replaceState(null, "", location.pathname);
+}
+
+// ==========================================
+// 畫面切換：表單 / 允許配對 / 配對完成
+// ==========================================
+function show_area(name) {
+  element_of("form_area").classList.toggle("hidden", name !== "form");
+  element_of("link_area").classList.toggle("hidden", name !== "link");
+  element_of("link_done").classList.toggle("hidden", name !== "done");
+  if (name !== "form") element_of("title").textContent = "熱量紀錄 - 遊戲登入";
+}
+
+function show_link_request(session) {
+  element_of("link_account").textContent = session.username;
+  show_area("link");
+}
+
+// ==========================================
+// 已登入：有配對請求就顯示允許畫面，否則直接到查看頁
+// ==========================================
+const existing_session = Calorie_Session.load();
+if (link_param && !link_challenge) {
+  write_log("遊戲登入連結無效，請回到遊戲重新按「登入」", false);
+} else if (existing_session && link_challenge) {
+  show_link_request(existing_session);
+} else if (existing_session) {
   Calorie_Session.go_to_viewer();
+} else if (link_challenge) {
+  write_log("請先登入，再允許遊戲使用此帳號", true);
 }
 
 // 從查看頁被送回來時顯示原因 (只接受固定的代碼，不顯示網址上的任意文字)
@@ -122,7 +156,12 @@ async function submit() {
     }
 
     Calorie_Session.save(result.data.idToken, username.toLowerCase());
-    Calorie_Session.go_to_viewer();
+    if (link_challenge) {
+      write_log("", true);
+      show_link_request(Calorie_Session.load());
+    } else {
+      Calorie_Session.go_to_viewer();
+    }
   } catch (e) {
     write_log(e.message, false);
   } finally {
@@ -133,8 +172,54 @@ async function submit() {
 }
 
 // ==========================================
+// 允許遊戲配對：POST /api/link/approve
+// ==========================================
+async function approve_link() {
+  const session = Calorie_Session.load();
+  if (!session) {
+    show_area("form");
+    return write_log("登入已過期，請重新登入", false);
+  }
+
+  const allow = element_of("btn_link_allow");
+  allow.disabled = true;
+  write_log("處理中…", true);
+
+  try {
+    const result = await Calorie_Session.send_request(CALORIE_CONFIG.API_BASE + "/link/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.token },
+      body: JSON.stringify({ challenge: link_challenge, username: session.username })
+    });
+
+    if (result.status === 401) {
+      Calorie_Session.clear();
+      show_area("form");
+      return write_log("登入已過期，請重新登入後再允許", false);
+    }
+    if (!result.ok) return write_log("允許失敗 (" + result.status + ")：" + Calorie_Session.error_of(result), false);
+
+    clear_link_from_url();
+    write_log("", true);
+    show_area("done");
+  } catch (e) {
+    write_log(e.message, false);
+  } finally {
+    allow.disabled = false;
+  }
+}
+
+function cancel_link() {
+  clear_link_from_url();
+  Calorie_Session.go_to_viewer();
+}
+
+// ==========================================
 // 綁定
 // ==========================================
+element_of("btn_link_allow").addEventListener("click", approve_link);
+element_of("btn_link_cancel").addEventListener("click", cancel_link);
+element_of("btn_go_viewer").addEventListener("click", () => Calorie_Session.go_to_viewer());
 element_of("btn_submit").addEventListener("click", submit);
 element_of("btn_switch").addEventListener("click", () => set_mode(!is_sign_up));
 element_of("username").addEventListener("keydown", (e) => { if (e.key === "Enter") element_of("password").focus(); });

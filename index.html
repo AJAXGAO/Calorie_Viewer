@@ -13,6 +13,25 @@
 </head>
 <body>
   <h1 id="title">熱量紀錄 - 登入</h1>
+
+  <!-- 遊戲配對：網址帶 ?link= 時，登入後顯示 -->
+  <div id="link_area" class="hidden">
+    <p class="notice">允許遊戲登入帳號「<strong id="link_account"></strong>」？</p>
+    <p><small>只有在你剛剛從<strong>自己的遊戲</strong>按下「登入」時才按允許。如果是別人傳給你的連結，請按取消。</small></p>
+    <div class="buttons">
+      <button id="btn_link_allow">允許</button>
+      <button id="btn_link_cancel" class="link">取消</button>
+    </div>
+  </div>
+
+  <div id="link_done" class="hidden">
+    <p class="notice ok">已允許，請回到遊戲。遊戲會在幾秒內自動完成登入。</p>
+    <div class="buttons">
+      <button id="btn_go_viewer">前往熱量紀錄</button>
+    </div>
+  </div>
+
+  <div id="form_area">
   <p><small id="subtitle">使用遊戲或本網站建立的帳號登入。密碼只用於這次登入，不會儲存。</small></p>
 
   <label>帳號名稱
@@ -31,7 +50,9 @@
 
   <div class="buttons">
     <button id="btn_submit">登入</button>
-    <button id="btn_switch" class="link">註冊</button>
+    <button id="btn_switch" class="link">還沒有帳號？註冊</button>
+  </div>
+
   </div>
 
   <pre id="log"></pre>
